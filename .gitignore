@@ -1,0 +1,8 @@
+# 環境變數 / 機密憑證
+.env
+.env.local
+*.local
+
+# Python
+__pycache__/
+*.pyc
