@@ -96,6 +96,7 @@ main { max-width:560px; margin:0 auto; padding:14px 14px 24px; }
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
   padding:11px 16px; border-radius:12px; font-weight:600; font-size:14px;
   background:var(--card-soft); color:var(--text); transition:transform .1s;
+  white-space:nowrap;
 }
 .btn:active { transform:scale(.97); }
 .btn-primary { background:var(--green-700); color:#fff; }
@@ -144,6 +145,7 @@ main { max-width:560px; margin:0 auto; padding:14px 14px 24px; }
 .item .del { color:var(--text-faint); padding:4px 2px 4px 8px; font-size:15px; flex:none; }
 .empty { text-align:center; color:var(--text-faint); font-size:13px; padding:14px; }
 .add-row { display:flex; gap:8px; }
+.add-row .btn { flex:none; }   /* 輸入框吃掉剩餘寬度，按鈕維持原寬不被壓扁 */
 
 /* ===== Water ===== */
 .cups { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 14px; }
