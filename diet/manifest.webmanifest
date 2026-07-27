@@ -1,0 +1,24 @@
+{
+  "name": "DietZen — 每日飲食助理",
+  "short_name": "DietZen",
+  "description": "飲食、喝水、體重與健身菜單的每日紀錄。離線可用，資料只存在你的裝置上。",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6fbf8",
+  "theme_color": "#2d6a4f",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "記一餐", "short_name": "記一餐", "url": "./?tab=food" },
+    { "name": "今日訓練", "short_name": "訓練", "url": "./?tab=gym" }
+  ]
+}

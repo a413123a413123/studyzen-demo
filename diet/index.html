@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="DietZen — 飲食、喝水、體重與健身菜單的每日紀錄助理。離線可用，資料只存在你的手機上。">
+<title>DietZen — 你的每日飲食助理</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12211a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DietZen">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+
+<style>
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --green-900:#1a3d2e; --green-700:#2d6a4f; --green-500:#52b788; --green-300:#95d5b2; --green-50:#e8f5ee;
+  --blue-500:#6fbfd8; --blue-300:#a8dadc; --blue-50:#eef7f9;
+  --bg:#f6fbf8; --card:#ffffff; --card-soft:#f1f7f3; --line:#e2ece6;
+  --text:#1a3528; --text-soft:#5a6e64; --text-faint:#8fa199;
+  --warn:#f4a261; --danger:#e76f51; --protein:#52b788; --carbs:#6fbfd8; --fat:#f4a261;
+  --shadow-sm:0 2px 8px rgba(26,61,46,.06);
+  --shadow-md:0 8px 28px rgba(26,61,46,.10);
+  --radius:16px; --radius-lg:24px;
+  --nav-h:64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#101a15; --card:#182620; --card-soft:#1f302a; --line:#2a3d34;
+    --text:#e8f2ec; --text-soft:#9db3a8; --text-faint:#6e857b;
+    --green-50:#1c2f26; --blue-50:#17272b;
+    --shadow-sm:0 2px 8px rgba(0,0,0,.3); --shadow-md:0 8px 28px rgba(0,0,0,.4);
+  }
+}
+
+html { -webkit-text-size-adjust:100%; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.55; font-size:15px;
+  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  overscroll-behavior-y:contain;
+}
+button,input,select,textarea { font:inherit; color:inherit; }
+button { background:none; border:none; cursor:pointer; }
+input,select,textarea {
+  background:var(--card-soft); border:1px solid var(--line); border-radius:12px;
+  padding:10px 12px; width:100%; outline:none;
+  font-size:16px; /* 低於 16px 時 iOS Safari 會在對焦時自動放大整頁 */
+}
+input:focus,select,textarea:focus { border-color:var(--green-500); }
+select { appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--text-soft) 50%),linear-gradient(135deg,var(--text-soft) 50%,transparent 50%); background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:34px; }
+input[type=number]{ -moz-appearance:textfield; }
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+/* ===== App bar ===== */
+.appbar {
+  position:sticky; top:0; z-index:30;
+  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:saturate(180%) blur(14px); -webkit-backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.appbar-row { display:flex; align-items:center; gap:8px; }
+.date-nav { display:flex; align-items:center; gap:4px; flex:1; }
+.date-btn {
+  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  color:var(--text-soft); font-size:17px; flex:none;
+}
+.date-btn:active { background:var(--card-soft); }
+.date-btn[disabled] { opacity:.28; }
+.date-label { flex:1; text-align:center; font-weight:700; font-size:16px; letter-spacing:.2px; }
+.date-label small { display:block; font-weight:500; font-size:11px; color:var(--text-faint); letter-spacing:.4px; }
+.icon-btn {
+  width:36px; height:36px; border-radius:11px; display:grid; place-items:center;
+  background:var(--card); box-shadow:var(--shadow-sm); font-size:16px; flex:none;
+}
+
+/* ===== Layout ===== */
+main { max-width:560px; margin:0 auto; padding:14px 14px 24px; }
+.view { display:none; animation:fade .22s ease; }
+.view.active { display:block; }
+@keyframes fade { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+.card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px; margin-bottom:12px; }
+.card-title { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.card-title h2 { font-size:15px; font-weight:700; letter-spacing:.2px; }
+.card-title .sub { font-size:12px; color:var(--text-faint); font-weight:500; }
+.section-head { font-size:12px; font-weight:700; color:var(--text-faint); letter-spacing:1px; margin:20px 4px 8px; text-transform:uppercase; }
+
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:11px 16px; border-radius:12px; font-weight:600; font-size:14px;
+  background:var(--card-soft); color:var(--text); transition:transform .1s;
+}
+.btn:active { transform:scale(.97); }
+.btn-primary { background:var(--green-700); color:#fff; }
+.btn-ghost { background:transparent; color:var(--green-700); padding:6px 10px; font-size:13px; }
+@media (prefers-color-scheme: dark) { .btn-ghost { color:var(--green-300); } .btn-primary { background:var(--green-500); color:#0d1a14; } }
+.btn-danger { background:transparent; color:var(--danger); }
+.btn-block { width:100%; }
+.btn-sm { padding:7px 12px; font-size:13px; border-radius:10px; }
+
+/* ===== Today ring ===== */
+.ring-wrap { display:flex; align-items:center; gap:18px; }
+.ring { position:relative; flex:none; width:132px; height:132px; }
+.ring svg { transform:rotate(-90deg); }
+.ring-center { position:absolute; inset:0; display:grid; place-content:center; text-align:center; }
+.ring-center .big { font-size:27px; font-weight:800; line-height:1.1; letter-spacing:-.5px; }
+.ring-center .cap { font-size:11px; color:var(--text-faint); letter-spacing:.5px; }
+.ring-stats { flex:1; min-width:0; display:grid; gap:9px; }
+.macro { }
+.macro-top { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; margin-bottom:4px; }
+.macro-top b { font-size:12.5px; font-weight:700; }
+.macro-top span { color:var(--text-faint); font-variant-numeric:tabular-nums; }
+.bar { height:7px; border-radius:99px; background:var(--card-soft); overflow:hidden; }
+.bar > i { display:block; height:100%; border-radius:99px; transition:width .35s ease; }
+.over { color:var(--danger) !important; }
+
+.kv-row { display:flex; gap:10px; }
+.kv {
+  flex:1; background:var(--card-soft); border-radius:13px; padding:10px 12px; text-align:center;
+}
+.kv .n { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+.kv .l { font-size:11px; color:var(--text-faint); }
+
+/* ===== Meals ===== */
+.slot { margin-bottom:12px; }
+.slot-head { display:flex; align-items:center; justify-content:space-between; padding:0 4px 6px; }
+.slot-head h3 { font-size:14px; font-weight:700; display:flex; align-items:center; gap:7px; }
+.slot-head .kcal { font-size:12.5px; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+.item {
+  display:flex; align-items:center; gap:10px; padding:11px 14px;
+  background:var(--card); border-radius:13px; margin-bottom:6px; box-shadow:var(--shadow-sm);
+}
+.item .name { flex:1; min-width:0; }
+.item .name b { display:block; font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.item .name small { color:var(--text-faint); font-size:11.5px; }
+.item .num { font-variant-numeric:tabular-nums; font-weight:700; font-size:14px; flex:none; }
+.item .del { color:var(--text-faint); padding:4px 2px 4px 8px; font-size:15px; flex:none; }
+.empty { text-align:center; color:var(--text-faint); font-size:13px; padding:14px; }
+.add-row { display:flex; gap:8px; }
+
+/* ===== Water ===== */
+.cups { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 14px; }
+.cup {
+  width:30px; height:38px; border-radius:6px 6px 11px 11px; border:2px solid var(--blue-300);
+  background:transparent; transition:background .2s;
+}
+.cup.full { background:var(--blue-500); border-color:var(--blue-500); }
+
+/* ===== Chips ===== */
+.chips { display:flex; gap:7px; overflow-x:auto; padding:2px 0 6px; margin:0 -2px; scrollbar-width:none; }
+.chips::-webkit-scrollbar { display:none; }
+.chip {
+  flex:none; padding:7px 13px; border-radius:999px; background:var(--card-soft);
+  font-size:13px; font-weight:600; white-space:nowrap; border:1px solid transparent;
+}
+.chip.on { background:var(--green-700); color:#fff; }
+@media (prefers-color-scheme: dark){ .chip.on { background:var(--green-500); color:#0d1a14; } }
+
+/* ===== Workout ===== */
+.ex { background:var(--card); border-radius:13px; box-shadow:var(--shadow-sm); padding:12px 14px; margin-bottom:8px; }
+.ex-head { display:flex; align-items:center; gap:8px; }
+.ex-head b { flex:1; font-size:14px; }
+.ex-head .meta { font-size:11.5px; color:var(--text-faint); }
+.sets { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.set-dot {
+  min-width:44px; padding:5px 8px; border-radius:9px; background:var(--card-soft);
+  font-size:11.5px; text-align:center; font-variant-numeric:tabular-nums; border:1.5px solid transparent;
+}
+.set-dot.done { background:var(--green-50); border-color:var(--green-500); color:var(--green-700); font-weight:700; }
+@media (prefers-color-scheme: dark){ .set-dot.done { color:var(--green-300); } }
+
+/* ===== Charts ===== */
+.chart { width:100%; height:150px; display:block; overflow:visible; }
+.legend { display:flex; gap:14px; font-size:11.5px; color:var(--text-faint); margin-top:8px; flex-wrap:wrap; }
+.legend i { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+
+/* ===== Settings ===== */
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:12.5px; font-weight:600; color:var(--text-soft); margin-bottom:5px; }
+.field .hint { font-size:11.5px; color:var(--text-faint); margin-top:5px; line-height:1.5; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+/* ===== Bottom nav ===== */
+nav {
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  display:grid; grid-template-columns:repeat(5,1fr);
+  background:color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter:saturate(180%) blur(16px); -webkit-backdrop-filter:saturate(180%) blur(16px);
+  border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button {
+  height:var(--nav-h); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color:var(--text-faint); font-size:10.5px; font-weight:600;
+}
+nav button .ic { font-size:19px; line-height:1; }
+nav button.on { color:var(--green-700); }
+@media (prefers-color-scheme: dark){ nav button.on { color:var(--green-300); } }
+
+/* ===== Sheet / modal ===== */
+.scrim {
+  position:fixed; inset:0; background:rgba(10,25,18,.45); z-index:50;
+  opacity:0; pointer-events:none; transition:opacity .22s;
+}
+.scrim.open { opacity:1; pointer-events:auto; }
+.sheet {
+  position:fixed; left:0; right:0; bottom:0; z-index:51;
+  background:var(--card); border-radius:22px 22px 0 0;
+  padding:8px 16px calc(16px + env(safe-area-inset-bottom));
+  max-height:88vh; overflow-y:auto; transform:translateY(102%); transition:transform .26s cubic-bezier(.32,.72,0,1);
+  max-width:560px; margin:0 auto;
+}
+.sheet.open { transform:none; }
+.grip { width:38px; height:4px; border-radius:99px; background:var(--line); margin:6px auto 12px; }
+.sheet h2 { font-size:17px; margin-bottom:12px; }
+.results { max-height:34vh; overflow-y:auto; margin:8px -4px 0; }
+.res {
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; width:100%; text-align:left;
+}
+.res:active { background:var(--card-soft); }
+.res .name { flex:1; min-width:0; }
+.res .name b { display:block; font-size:14px; font-weight:600; }
+.res .name small { font-size:11.5px; color:var(--text-faint); }
+.res .num { font-size:13px; font-weight:700; color:var(--text-soft); font-variant-numeric:tabular-nums; }
+
+/* ===== Toast ===== */
+#toast {
+  position:fixed; left:50%; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+  transform:translate(-50%,14px); z-index:60;
+  background:var(--green-900); color:#fff; padding:10px 18px; border-radius:99px;
+  font-size:13.5px; font-weight:600; box-shadow:var(--shadow-md);
+  opacity:0; pointer-events:none; transition:.24s; max-width:88vw; text-align:center;
+}
+#toast.show { opacity:1; transform:translate(-50%,0); }
+
+.banner {
+  display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:13px;
+  background:var(--green-50); font-size:13px; margin-bottom:12px; line-height:1.45;
+}
+.banner b { display:block; font-size:13.5px; }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-row">
+    <div class="date-nav">
+      <button class="date-btn" id="prevDay" aria-label="前一天">‹</button>
+      <div class="date-label" id="dateLabel"></div>
+      <button class="date-btn" id="nextDay" aria-label="後一天">›</button>
+    </div>
+    <button class="icon-btn" id="todayBtn" aria-label="回到今天" title="回到今天">⌖</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 今日 ============ -->
+  <section class="view active" id="view-today">
+    <div class="card">
+      <div class="ring-wrap">
+        <div class="ring">
+          <svg width="132" height="132" viewBox="0 0 132 132">
+            <circle cx="66" cy="66" r="56" fill="none" stroke="var(--card-soft)" stroke-width="13"/>
+            <circle id="ringArc" cx="66" cy="66" r="56" fill="none" stroke="var(--green-500)"
+                    stroke-width="13" stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="351.86"
+                    style="transition:stroke-dashoffset .45s ease,stroke .3s"/>
+          </svg>
+          <div class="ring-center">
+            <div class="big" id="ringNum">0</div>
+            <div class="cap" id="ringCap">剩餘大卡</div>
+          </div>
+        </div>
+        <div class="ring-stats">
+          <div class="macro"><div class="macro-top"><b>蛋白質</b><span id="pTxt">0 / 0 g</span></div>
+            <div class="bar"><i id="pBar" style="width:0;background:var(--protein)"></i></div></div>
+          <div class="macro"><div class="macro-top"><b>碳水</b><span id="cTxt">0 / 0 g</span></div>
+            <div class="bar"><i id="cBar" style="width:0;background:var(--carbs)"></i></div></div>
+          <div class="macro"><div class="macro-top"><b>脂肪</b><span id="fTxt">0 / 0 g</span></div>
+            <div class="bar"><i id="fBar" style="width:0;background:var(--fat)"></i></div></div>
+        </div>
+      </div>
+      <div class="kv-row" style="margin-top:16px">
+        <div class="kv"><div class="n" id="kvIn">0</div><div class="l">攝取</div></div>
+        <div class="kv"><div class="n" id="kvOut">0</div><div class="l">運動消耗</div></div>
+        <div class="kv"><div class="n" id="kvGoal">0</div><div class="l">目標</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>💧 喝水</h2><span class="sub" id="waterTxt">0 / 2000 ml</span></div>
+      <div class="cups" id="cups"></div>
+      <div class="add-row">
+        <button class="btn btn-primary" style="flex:1" data-water="250">+250 ml</button>
+        <button class="btn" style="flex:1" data-water="500">+500 ml</button>
+        <button class="btn" data-water="-250" aria-label="減少 250ml">↩︎</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>⚖️ 體重</h2><span class="sub" id="weightDelta"></span></div>
+      <div class="add-row">
+        <input type="number" inputmode="decimal" step="0.1" id="weightInput" placeholder="今天的體重 (kg)">
+        <button class="btn btn-primary" id="saveWeight">記錄</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>📝 今日筆記</h2></div>
+      <textarea id="dayNote" rows="2" placeholder="今天的身體感受、外食原因、想記住的事…"></textarea>
+    </div>
+  </section>
+
+  <!-- ============ 飲食 ============ -->
+  <section class="view" id="view-food">
+    <div id="slots"></div>
+    <button class="btn btn-block btn-ghost" id="copyYesterday" style="margin-top:4px">⧉ 複製昨天的餐食</button>
+  </section>
+
+  <!-- ============ 運動 ============ -->
+  <section class="view" id="view-gym">
+    <div class="card">
+      <div class="card-title"><h2>🏋️ 今日訓練</h2><span class="sub" id="gymSummary">尚未安排</span></div>
+      <div class="chips" id="routineChips"></div>
+      <div class="add-row" style="margin-top:10px">
+        <button class="btn btn-primary btn-block" id="addExercise">＋ 加入單一動作</button>
+      </div>
+    </div>
+    <div id="exList"></div>
+    <div class="section-head">我的菜單</div>
+    <div id="routineList"></div>
+    <button class="btn btn-block btn-ghost" id="newRoutine">＋ 建立新菜單</button>
+  </section>
+
+  <!-- ============ 趨勢 ============ -->
+  <section class="view" id="view-trend">
+    <div class="chips" id="rangeChips">
+      <button class="chip on" data-range="7">7 天</button>
+      <button class="chip" data-range="14">14 天</button>
+      <button class="chip" data-range="30">30 天</button>
+      <button class="chip" data-range="90">90 天</button>
+    </div>
+    <div class="card">
+      <div class="card-title"><h2>⚖️ 體重趨勢</h2><span class="sub" id="wStat"></span></div>
+      <svg class="chart" id="weightChart" preserveAspectRatio="none"></svg>
+      <div class="legend"><span><i style="background:var(--green-500)"></i>體重</span><span><i style="background:var(--warn)"></i>目標</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h2>🔥 每日熱量</h2><span class="sub" id="kStat"></span></div>
+      <svg class="chart" id="kcalChart" preserveAspectRatio="none"></svg>
+      <div class="legend"><span><i style="background:var(--green-500)"></i>達標</span><span><i style="background:var(--danger)"></i>超標</span><span><i style="background:var(--text-faint)"></i>目標線</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h2>📊 期間平均</h2></div>
+      <div class="kv-row" style="margin-bottom:10px">
+        <div class="kv"><div class="n" id="avgKcal">–</div><div class="l">平均熱量</div></div>
+        <div class="kv"><div class="n" id="avgP">–</div><div class="l">平均蛋白質</div></div>
+      </div>
+      <div class="kv-row">
+        <div class="kv"><div class="n" id="avgWater">–</div><div class="l">平均喝水</div></div>
+        <div class="kv"><div class="n" id="daysLogged">–</div><div class="l">有紀錄天數</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="view" id="view-more">
+    <div class="banner" id="installBanner" style="display:none">
+      <span style="font-size:20px">📱</span>
+      <div style="flex:1"><b>把 DietZen 裝到手機桌面</b><span id="installHint"></span></div>
+      <button class="btn btn-sm btn-primary" id="installBtn" style="display:none">安裝</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>🎯 每日目標</h2><button class="btn-ghost" id="calcTdee">用身高體重換算</button></div>
+      <div class="field"><label>熱量 (kcal)</label><input type="number" inputmode="numeric" id="gKcal"></div>
+      <div class="grid3">
+        <div class="field"><label>蛋白質 g</label><input type="number" inputmode="numeric" id="gP"></div>
+        <div class="field"><label>碳水 g</label><input type="number" inputmode="numeric" id="gC"></div>
+        <div class="field"><label>脂肪 g</label><input type="number" inputmode="numeric" id="gF"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>喝水 ml</label><input type="number" inputmode="numeric" id="gWater"></div>
+        <div class="field"><label>目標體重 kg</label><input type="number" inputmode="decimal" step="0.1" id="gWeight"></div>
+      </div>
+      <div class="hint">三大營養素若留白，會依 熱量 × 30/40/30 自動配置。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>👤 個人資料</h2><span class="sub">用來估算每日消耗</span></div>
+      <div class="grid2">
+        <div class="field"><label>生理性別</label><select id="pSex"><option value="male">男</option><option value="female">女</option></select></div>
+        <div class="field"><label>年齡</label><input type="number" inputmode="numeric" id="pAge"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>身高 cm</label><input type="number" inputmode="numeric" id="pHeight"></div>
+        <div class="field"><label>活動量</label>
+          <select id="pAct">
+            <option value="1.2">久坐，少運動</option>
+            <option value="1.375">每週運動 1–3 次</option>
+            <option value="1.55">每週運動 3–5 次</option>
+            <option value="1.725">每週運動 6–7 次</option>
+            <option value="1.9">體力工作 / 一天兩練</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" id="tdeeHint"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>🍱 我的常用食物</h2><span class="sub" id="customCount"></span></div>
+      <div id="customFoods"></div>
+      <button class="btn btn-block btn-sm" id="addCustomFood" style="margin-top:8px">＋ 新增自訂食物</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>💾 資料</h2></div>
+      <div class="grid2">
+        <button class="btn btn-sm" id="exportBtn">匯出 JSON</button>
+        <button class="btn btn-sm" id="importBtn">匯入 JSON</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <div class="hint">所有紀錄只存在這支裝置的瀏覽器裡，不會上傳到任何伺服器。換手機或清除瀏覽器資料前，記得先匯出備份。</div>
+      <button class="btn btn-block btn-danger btn-sm" id="resetBtn" style="margin-top:10px">清除所有資料</button>
+    </div>
+
+    <p style="text-align:center;color:var(--text-faint);font-size:11.5px;padding:8px 20px 4px;line-height:1.6">
+      DietZen · 熱量與營養素為常見份量的估算值，僅供日常參考，不能取代營養師或醫療建議。
+    </p>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-view="today"><span class="ic">◎</span>今日</button>
+  <button data-view="food"><span class="ic">🍚</span>飲食</button>
+  <button data-view="gym"><span class="ic">🏋️</span>運動</button>
+  <button data-view="trend"><span class="ic">📈</span>趨勢</button>
+  <button data-view="more"><span class="ic">⚙︎</span>設定</button>
+</nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grip"></div><div id="sheetBody"></div></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ========== 內建食物資料庫（每份估算值） ========== */
+const FOODS = [
+  // 主食
+  ['白飯 1碗',280,5.2,62,0.6,'主食'], ['糙米飯 1碗',264,5.6,57,1.8,'主食'],
+  ['白吐司 1片',75,2.5,14,1,'主食'], ['饅頭 1個',250,7.5,52,1,'主食'],
+  ['陽春麵 1碗',350,12,68,3,'主食'], ['義大利麵 1份',450,15,65,13,'主食'],
+  ['地瓜 1條',180,2.4,42,0.3,'主食'], ['燕麥片 1份',150,5,27,3,'主食'],
+  ['水餃 10顆',500,20,55,20,'主食'], ['蛋餅 1份',300,10,33,14,'主食'],
+  ['飯糰 1個',400,10,60,12,'主食'], ['蘿蔔糕 2塊',250,4,35,10,'主食'],
+  // 蛋白質
+  ['雞胸肉 100g',165,31,0,3.6,'蛋白質'], ['雞腿去皮 100g',180,24,0,9,'蛋白質'],
+  ['鹹酥雞 1份',550,25,30,36,'蛋白質'], ['豬里肌 100g',145,22,0,6,'蛋白質'],
+  ['三層肉 100g',380,15,0,35,'蛋白質'], ['牛排 150g',350,40,0,20,'蛋白質'],
+  ['鮭魚 100g',208,20,0,13,'蛋白質'], ['鯖魚 100g',250,20,0,18,'蛋白質'],
+  ['蝦仁 100g',99,24,0,0.3,'蛋白質'], ['雞蛋 1顆',70,6.3,0.4,5,'蛋白質'],
+  ['荷包蛋 1顆',110,6.5,0.5,9,'蛋白質'], ['茶葉蛋 1顆',75,6.5,1,5,'蛋白質'],
+  ['板豆腐 100g',88,8.5,2,5,'蛋白質'], ['嫩豆腐 100g',51,5,2,2.7,'蛋白質'],
+  ['無糖豆漿 250ml',90,8,4,4,'蛋白質'], ['希臘優格 100g',97,9,4,5,'蛋白質'],
+  ['乳清蛋白 1匙',120,24,3,1.5,'蛋白質'],
+  // 蔬果
+  ['燙青菜 1份',40,2,4,2,'蔬果'], ['花椰菜 100g',34,2.8,7,0.4,'蔬果'],
+  ['生菜沙拉 1份',50,2,8,1,'蔬果'], ['玉米 1根',130,4,28,1.5,'蔬果'],
+  ['香蕉 1根',105,1.3,27,0.4,'蔬果'], ['蘋果 1顆',95,0.5,25,0.3,'蔬果'],
+  ['芭樂 半顆',50,1.2,11,0.5,'蔬果'], ['橘子 1顆',60,1,15,0.2,'蔬果'],
+  ['葡萄 15顆',100,1,26,0.2,'蔬果'], ['酪梨 半顆',160,2,9,15,'蔬果'],
+  // 外食
+  ['排骨便當',800,30,95,32,'外食'], ['雞腿便當',780,35,90,30,'外食'],
+  ['滷肉飯 小碗',400,12,55,14,'外食'], ['牛肉麵 1碗',550,30,70,16,'外食'],
+  ['大麥克',550,25,45,30,'外食'], ['薯條 中',340,4,44,16,'外食'],
+  ['炸雞 1塊',290,22,11,18,'外食'], ['披薩 1片',285,12,36,10,'外食'],
+  ['關東煮 3串',120,8,12,4,'外食'], ['涼麵 1份',500,14,75,16,'外食'],
+  ['小火鍋 1份',700,35,60,35,'外食'], ['壽司 6貫',350,14,60,5,'外食'],
+  ['火腿蛋三明治',350,15,38,15,'外食'], ['雞胸沙拉餐盒',450,40,35,15,'外食'],
+  // 飲品
+  ['珍珠奶茶 中全糖',500,6,90,12,'飲品'], ['無糖綠茶 500ml',0,0,0,0,'飲品'],
+  ['拿鐵 中杯',190,10,15,10,'飲品'], ['美式咖啡',5,0.3,1,0,'飲品'],
+  ['可樂 330ml',140,0,35,0,'飲品'], ['運動飲料 500ml',125,0,31,0,'飲品'],
+  // 點心
+  ['洋芋片 小包',270,3,26,17,'點心'], ['巧克力 50g',270,3,30,15,'點心'],
+  ['冰淇淋 1球',140,2.5,17,7,'點心'], ['蛋糕 1塊',350,4,45,17,'點心'],
+  ['菠蘿麵包',330,6,45,14,'點心'], ['堅果 1把',180,5,6,16,'點心'],
+].map(([name,kcal,p,c,f,cat]) => ({name,kcal,p,c,f,cat}));
+
+/* ========== 內建健身菜單 ========== */
+const PRESET_ROUTINES = [
+  { id:'r-body', name:'徒手全身', exercises:[
+    {name:'深蹲',sets:3,reps:15,weight:0},{name:'伏地挺身',sets:3,reps:12,weight:0},
+    {name:'棒式 (45秒)',sets:3,reps:1,weight:0},{name:'弓箭步',sets:3,reps:12,weight:0},
+    {name:'臀橋',sets:3,reps:15,weight:0}]},
+  { id:'r-push', name:'推日 · 胸肩三頭', exercises:[
+    {name:'槓鈴臥推',sets:4,reps:8,weight:40},{name:'啞鈴肩推',sets:3,reps:10,weight:12},
+    {name:'上斜啞鈴臥推',sets:3,reps:10,weight:14},{name:'側平舉',sets:3,reps:15,weight:6},
+    {name:'三頭下壓',sets:3,reps:12,weight:20}]},
+  { id:'r-pull', name:'拉日 · 背二頭', exercises:[
+    {name:'引體向上',sets:4,reps:6,weight:0},{name:'槓鈴划船',sets:4,reps:8,weight:40},
+    {name:'滑輪下拉',sets:3,reps:10,weight:35},{name:'臉拉',sets:3,reps:15,weight:15},
+    {name:'二頭彎舉',sets:3,reps:12,weight:10}]},
+  { id:'r-leg', name:'腿日', exercises:[
+    {name:'深蹲',sets:4,reps:8,weight:50},{name:'羅馬尼亞硬舉',sets:3,reps:10,weight:45},
+    {name:'腿推',sets:3,reps:12,weight:80},{name:'腿彎舉',sets:3,reps:12,weight:30},
+    {name:'提踵',sets:4,reps:15,weight:20}]},
+  { id:'r-cardio', name:'有氧 · 燃脂', exercises:[
+    {name:'慢跑 30 分',sets:1,reps:1,weight:0,kcal:280},{name:'跳繩 5 分',sets:5,reps:1,weight:0,kcal:60},
+    {name:'登山者',sets:3,reps:30,weight:0,kcal:30},{name:'開合跳',sets:3,reps:40,weight:0,kcal:30}]},
+];
+
+const SLOTS = [
+  {key:'breakfast', label:'早餐', icon:'🌅'},
+  {key:'lunch',     label:'午餐', icon:'🍱'},
+  {key:'dinner',    label:'晚餐', icon:'🌙'},
+  {key:'snack',     label:'點心', icon:'🍪'},
+];
+
+/* ========== 狀態 ========== */
+const KEY = 'dietzen.v1';
+const DEFAULTS = () => ({
+  version: 1,
+  profile: { sex:'male', age:28, height:170, activity:1.375 },
+  goals:   { kcal:2000, protein:120, carbs:200, fat:67, water:2000, weightTarget:null },
+  days: {}, customFoods: [], recent: [],
+  routines: JSON.parse(JSON.stringify(PRESET_ROUTINES)),
+});
+
+let S = load();
+let cursor = todayKey();
+let trendRange = 7;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return DEFAULTS();
+    const parsed = JSON.parse(raw);
+    return Object.assign(DEFAULTS(), parsed, {
+      profile: Object.assign(DEFAULTS().profile, parsed.profile),
+      goals:   Object.assign(DEFAULTS().goals,   parsed.goals),
+    });
+  } catch (e) { console.warn('讀取資料失敗，改用預設值', e); return DEFAULTS(); }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('儲存失敗，可能是空間不足'); }
+}
+
+/* ========== 小工具 ========== */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 9);
+const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function todayKey() { return dateKey(new Date()); }
+function parseKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
+function shiftKey(k, delta) { const d = parseKey(k); d.setDate(d.getDate()+delta); return dateKey(d); }
+
+function emptyDay() { return { meals:[], water:0, weight:null, exercises:[], note:'' }; }
+function day(k = cursor) { return S.days[k] || emptyDay(); }
+function mutate(k, fn) { S.days[k] = S.days[k] || emptyDay(); fn(S.days[k]); save(); }
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1900);
+}
+
+function totals(d) {
+  const t = { kcal:0, p:0, c:0, f:0, burn:0 };
+  d.meals.forEach(m => { t.kcal += m.kcal; t.p += m.p; t.c += m.c; t.f += m.f; });
+  d.exercises.forEach(e => { t.burn += e.kcal || 0; });
+  return t;
+}
+
+/* ========== 導覽 ========== */
+$$('nav button').forEach(b => b.addEventListener('click', () => {
+  $$('nav button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + b.dataset.view));
+  window.scrollTo({ top:0 });
+  renderAll();
+}));
+
+$('#prevDay').addEventListener('click', () => { cursor = shiftKey(cursor, -1); renderAll(); });
+$('#nextDay').addEventListener('click', () => { if (cursor < todayKey()) { cursor = shiftKey(cursor, 1); renderAll(); } });
+$('#todayBtn').addEventListener('click', () => { cursor = todayKey(); renderAll(); toast('回到今天'); });
+
+function renderDate() {
+  const d = parseKey(cursor), t = todayKey();
+  const wd = ['週日','週一','週二','週三','週四','週五','週六'][d.getDay()];
+  const rel = cursor === t ? '今天' : cursor === shiftKey(t,-1) ? '昨天' : wd;
+  $('#dateLabel').innerHTML = `${d.getMonth()+1} 月 ${d.getDate()} 日<small>${rel}</small>`;
+  $('#nextDay').disabled = cursor >= t;
+}
+
+/* ========== 今日 ========== */
+function renderToday() {
+  const d = day(), t = totals(d), g = S.goals;
+  const budget = g.kcal - t.kcal + t.burn;
+  const pct = g.kcal > 0 ? Math.min(t.kcal / g.kcal, 1) : 0;
+  const C = 2 * Math.PI * 56;
+
+  const arc = $('#ringArc');
+  arc.setAttribute('stroke-dashoffset', C * (1 - pct));
+  arc.setAttribute('stroke', t.kcal > g.kcal ? 'var(--danger)' : t.kcal > g.kcal * 0.85 ? 'var(--warn)' : 'var(--green-500)');
+  $('#ringNum').textContent = Math.round(Math.abs(budget));
+  $('#ringCap').textContent = budget >= 0 ? '剩餘大卡' : '超出大卡';
+  $('#ringNum').classList.toggle('over', budget < 0);
+
+  const macro = (bar, txt, val, goal, color) => {
+    $(bar).style.width = (goal > 0 ? Math.min(val/goal, 1) * 100 : 0) + '%';
+    $(bar).style.background = val > goal && goal > 0 ? 'var(--danger)' : color;
+    $(txt).textContent = `${Math.round(val)} / ${Math.round(goal)} g`;
+  };
+  macro('#pBar', '#pTxt', t.p, g.protein, 'var(--protein)');
+  macro('#cBar', '#cTxt', t.c, g.carbs,   'var(--carbs)');
+  macro('#fBar', '#fTxt', t.f, g.fat,     'var(--fat)');
+
+  $('#kvIn').textContent   = Math.round(t.kcal);
+  $('#kvOut').textContent  = Math.round(t.burn);
+  $('#kvGoal').textContent = g.kcal;
+
+  // 喝水
+  const cups = Math.ceil(g.water / 250) || 8;
+  $('#cups').innerHTML = Array.from({length: Math.max(cups, Math.ceil(d.water/250))},
+    (_, i) => `<div class="cup${d.water >= (i+1)*250 ? ' full' : ''}"></div>`).join('');
+  $('#waterTxt').textContent = `${d.water} / ${g.water} ml`;
+
+  // 體重
+  $('#weightInput').value = d.weight ?? '';
+  const prev = prevWeight(cursor);
+  if (d.weight && prev !== null) {
+    const diff = d.weight - prev;
+    $('#weightDelta').textContent = `${diff > 0 ? '▲' : diff < 0 ? '▼' : '＝'} ${Math.abs(diff).toFixed(1)} kg（對比上次）`;
+  } else { $('#weightDelta').textContent = S.goals.weightTarget ? `目標 ${S.goals.weightTarget} kg` : ''; }
+
+  $('#dayNote').value = d.note || '';
+}
+
+function prevWeight(key) {
+  const keys = Object.keys(S.days).filter(k => k < key && S.days[k].weight).sort();
+  return keys.length ? S.days[keys[keys.length-1]].weight : null;
+}
+
+$$('[data-water]').forEach(b => b.addEventListener('click', () => {
+  mutate(cursor, d => { d.water = Math.max(0, d.water + num(b.dataset.water)); });
+  renderToday();
+}));
+$('#saveWeight').addEventListener('click', () => {
+  const v = num($('#weightInput').value);
+  if (v <= 0) return toast('請輸入體重');
+  mutate(cursor, d => { d.weight = Math.round(v * 10) / 10; });
+  renderToday(); toast('體重已記錄');
+});
+$('#dayNote').addEventListener('change', e => mutate(cursor, d => { d.note = e.target.value; }));
+
+/* ========== 飲食 ========== */
+function renderFood() {
+  const d = day();
+  $('#slots').innerHTML = SLOTS.map(s => {
+    const items = d.meals.filter(m => m.slot === s.key);
+    const sum = items.reduce((a,m) => a + m.kcal, 0);
+    return `<div class="slot">
+      <div class="slot-head">
+        <h3>${s.icon} ${s.label}</h3>
+        <span class="kcal">${sum ? Math.round(sum) + ' kcal' : ''}</span>
+      </div>
+      ${items.map(m => `<div class="item">
+        <div class="name"><b>${esc(m.name)}</b><small>P ${Math.round(m.p||0)} · C ${Math.round(m.c||0)} · F ${Math.round(m.f||0)}</small></div>
+        <div class="num">${Math.round(m.kcal)}</div>
+        <button class="del" data-del-meal="${m.id}" aria-label="刪除">✕</button>
+      </div>`).join('')}
+      <button class="btn btn-block btn-sm" data-add="${s.key}">＋ 加入${s.label}</button>
+    </div>`;
+  }).join('');
+}
+
+$('#slots').addEventListener('click', e => {
+  const add = e.target.closest('[data-add]');
+  if (add) return openFoodSheet(add.dataset.add);
+  const del = e.target.closest('[data-del-meal]');
+  if (del) {
+    mutate(cursor, d => { d.meals = d.meals.filter(m => m.id !== del.dataset.delMeal); });
+    renderFood(); renderToday(); toast('已刪除');
+  }
+});
+
+$('#copyYesterday').addEventListener('click', () => {
+  const y = S.days[shiftKey(cursor, -1)];
+  if (!y || !y.meals.length) return toast('昨天沒有紀錄');
+  mutate(cursor, d => { y.meals.forEach(m => d.meals.push({ ...m, id: uid() })); });
+  renderFood(); renderToday(); toast(`已複製 ${y.meals.length} 項`);
+});
+
+/* ---- 加入食物的 sheet ---- */
+function openFoodSheet(slot) {
+  const label = SLOTS.find(s => s.key === slot).label;
+  openSheet(`
+    <h2>加入${label}</h2>
+    <input id="foodSearch" placeholder="搜尋食物，或直接輸入名稱" autocomplete="off">
+    <div class="results" id="foodResults"></div>
+    <div style="border-top:1px solid var(--line);margin:12px -16px 0;padding:12px 16px 0">
+      <div class="grid2" style="margin-bottom:8px">
+        <input id="mName" placeholder="自訂名稱">
+        <input id="mKcal" type="number" inputmode="numeric" placeholder="熱量 kcal">
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <input id="mP" type="number" inputmode="decimal" placeholder="蛋白 g">
+        <input id="mC" type="number" inputmode="decimal" placeholder="碳水 g">
+        <input id="mF" type="number" inputmode="decimal" placeholder="脂肪 g">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-soft);margin-bottom:10px">
+        <input type="checkbox" id="mSave" style="width:auto"> 存成我的常用食物
+      </label>
+      <button class="btn btn-primary btn-block" id="mAdd">加入</button>
+    </div>
+  `);
+
+  const results = $('#foodResults');
+  const pool = () => [...S.customFoods, ...FOODS];
+
+  function draw(q) {
+    q = q.trim().toLowerCase();
+    let list;
+    if (!q) {
+      const recent = S.recent.map(n => pool().find(f => f.name === n)).filter(Boolean);
+      list = [...recent, ...pool().filter(f => !S.recent.includes(f.name))].slice(0, 40);
+    } else {
+      list = pool().filter(f => f.name.toLowerCase().includes(q) || (f.cat||'').includes(q)).slice(0, 40);
+    }
+    results.innerHTML = list.length ? list.map((f, i) => `
+      <button class="res" data-food="${esc(f.name)}">
+        <div class="name"><b>${esc(f.name)}</b><small>${f.cat || '自訂'} · P${f.p} C${f.c} F${f.f}</small></div>
+        <div class="num">${f.kcal}</div>
+      </button>`).join('')
+      : `<div class="empty">找不到，直接用下面的欄位自己輸入吧</div>`;
+  }
+  draw('');
+  $('#foodSearch').addEventListener('input', e => draw(e.target.value));
+
+  results.addEventListener('click', e => {
+    const btn = e.target.closest('[data-food]');
+    if (!btn) return;
+    const f = pool().find(x => x.name === btn.dataset.food);
+    addMeal(slot, f.name, f.kcal, f.p, f.c, f.f);
+  });
+
+  $('#mAdd').addEventListener('click', () => {
+    const name = $('#mName').value.trim() || $('#foodSearch').value.trim();
+    if (!name) return toast('請輸入名稱');
+    const food = { name, kcal:num($('#mKcal').value), p:num($('#mP').value), c:num($('#mC').value), f:num($('#mF').value) };
+    if ($('#mSave').checked && !S.customFoods.some(x => x.name === name)) {
+      S.customFoods.unshift({ ...food, cat:'自訂' });
+    }
+    addMeal(slot, food.name, food.kcal, food.p, food.c, food.f);
+  });
+}
+
+function addMeal(slot, name, kcal, p, c, f) {
+  mutate(cursor, d => d.meals.push({ id:uid(), slot, name, kcal, p, c, f }));
+  S.recent = [name, ...S.recent.filter(n => n !== name)].slice(0, 12);
+  save(); closeSheet(); renderFood(); renderToday(); toast(`已加入 ${name}`);
+}
+
+/* ========== 運動 ========== */
+function renderGym() {
+  const d = day();
+  $('#routineChips').innerHTML = S.routines.map(r =>
+    `<button class="chip" data-routine="${r.id}">${esc(r.name)}</button>`).join('');
+
+  $('#exList').innerHTML = d.exercises.length ? d.exercises.map(ex => `
+    <div class="ex">
+      <div class="ex-head">
+        <b>${esc(ex.name)}</b>
+        <span class="meta">${ex.kcal ? ex.kcal + ' kcal · ' : ''}${volume(ex) ? volume(ex).toLocaleString() + ' kg' : ''}</span>
+        <button class="del" data-edit-ex="${ex.id}" aria-label="調整">✎</button>
+        <button class="del" data-del-ex="${ex.id}" aria-label="刪除">✕</button>
+      </div>
+      <div class="sets">
+        ${ex.sets.map((s, i) => `<button class="set-dot${s.done ? ' done' : ''}" data-set="${ex.id}:${i}">
+          ${s.weight ? s.weight + 'kg' : ''}${s.weight ? '<br>' : ''}×${s.reps}
+        </button>`).join('')}
+        <button class="set-dot" data-addset="${ex.id}">＋</button>
+      </div>
+    </div>`).join('') : `<div class="empty">選一份菜單開始，或加入單一動作</div>`;
+
+  const done = d.exercises.reduce((a,e) => a + e.sets.filter(s => s.done).length, 0);
+  const all  = d.exercises.reduce((a,e) => a + e.sets.length, 0);
+  $('#gymSummary').textContent = all ? `完成 ${done} / ${all} 組 · 消耗 ${Math.round(totals(d).burn)} kcal` : '尚未安排';
+
+  $('#routineList').innerHTML = S.routines.map(r => `
+    <div class="item">
+      <div class="name"><b>${esc(r.name)}</b><small>${r.exercises.length} 個動作 · ${esc(r.exercises.slice(0,3).map(e=>e.name).join('、'))}${r.exercises.length>3?'…':''}</small></div>
+      <button class="btn btn-sm" data-editroutine="${r.id}">編輯</button>
+      <button class="del" data-delroutine="${r.id}" aria-label="刪除">✕</button>
+    </div>`).join('');
+}
+
+const volume = ex => ex.sets.filter(s => s.done).reduce((a,s) => a + s.reps * s.weight, 0);
+
+$('#routineChips').addEventListener('click', e => {
+  const btn = e.target.closest('[data-routine]');
+  if (!btn) return;
+  const r = S.routines.find(x => x.id === btn.dataset.routine);
+  mutate(cursor, d => {
+    r.exercises.forEach(x => d.exercises.push({
+      id:uid(), name:x.name, kcal:x.kcal || 0,
+      sets: Array.from({length:x.sets}, () => ({ reps:x.reps, weight:x.weight, done:false })),
+    }));
+  });
+  renderGym(); renderToday(); toast(`已載入「${r.name}」`);
+});
+
+$('#exList').addEventListener('click', e => {
+  const set = e.target.closest('[data-set]');
+  if (set) {
+    const [id, i] = set.dataset.set.split(':');
+    mutate(cursor, d => { const ex = d.exercises.find(x => x.id === id); ex.sets[i].done = !ex.sets[i].done; });
+    return renderGym();
+  }
+  const addset = e.target.closest('[data-addset]');
+  if (addset) {
+    mutate(cursor, d => {
+      const ex = d.exercises.find(x => x.id === addset.dataset.addset);
+      const last = ex.sets[ex.sets.length-1] || { reps:10, weight:0 };
+      ex.sets.push({ reps:last.reps, weight:last.weight, done:false });
+    });
+    return renderGym();
+  }
+  const del = e.target.closest('[data-del-ex]');
+  if (del) {
+    mutate(cursor, d => { d.exercises = d.exercises.filter(x => x.id !== del.dataset.delEx); });
+    renderGym(); renderToday();
+    return;
+  }
+  const edit = e.target.closest('[data-edit-ex]');
+  if (edit) editTodayExercise(day().exercises.find(x => x.id === edit.dataset.editEx));
+});
+
+// 今天實際做的重量／次數常和菜單不同，這裡直接改當天的紀錄，不動到菜單本身
+function editTodayExercise(ex) {
+  const first = ex.sets[0] || { reps:10, weight:0 };
+  openSheet(`
+    <h2>調整「${esc(ex.name)}」</h2>
+    <p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px">只會改今天的紀錄，菜單維持原樣。</p>
+    <div class="grid3">
+      <div class="field"><label>組數</label><input id="edSets" type="number" inputmode="numeric" value="${ex.sets.length}"></div>
+      <div class="field"><label>次數</label><input id="edReps" type="number" inputmode="numeric" value="${first.reps}"></div>
+      <div class="field"><label>重量 kg</label><input id="edW" type="number" inputmode="decimal" value="${first.weight}"></div>
+    </div>
+    <div class="field"><label>估計消耗 kcal</label><input id="edKcal" type="number" inputmode="numeric" value="${ex.kcal || ''}" placeholder="0"></div>
+    <button class="btn btn-primary btn-block" id="edSave">儲存</button>
+  `);
+  $('#edSave').addEventListener('click', () => {
+    const n = Math.max(1, num($('#edSets').value));
+    const reps = Math.max(1, num($('#edReps').value));
+    const weight = num($('#edW').value);
+    mutate(cursor, d => {
+      const target = d.exercises.find(x => x.id === ex.id);
+      const old = target.sets;
+      target.sets = Array.from({length:n}, (_, i) => ({ reps, weight, done: old[i] ? old[i].done : false }));
+      target.kcal = num($('#edKcal').value);
+    });
+    closeSheet(); renderGym(); renderToday(); toast('已更新');
+  });
+}
+
+$('#addExercise').addEventListener('click', () => {
+  openSheet(`
+    <h2>加入動作</h2>
+    <div class="field"><label>動作名稱</label><input id="exName" placeholder="例如：深蹲、跑步 30 分"></div>
+    <div class="grid3">
+      <div class="field"><label>組數</label><input id="exSets" type="number" inputmode="numeric" value="3"></div>
+      <div class="field"><label>次數</label><input id="exReps" type="number" inputmode="numeric" value="10"></div>
+      <div class="field"><label>重量 kg</label><input id="exW" type="number" inputmode="decimal" value="0"></div>
+    </div>
+    <div class="field"><label>估計消耗 kcal（有氧填，重訓可留白）</label><input id="exKcal" type="number" inputmode="numeric" placeholder="0"></div>
+    <button class="btn btn-primary btn-block" id="exAdd">加入</button>
+  `);
+  $('#exAdd').addEventListener('click', () => {
+    const name = $('#exName').value.trim();
+    if (!name) return toast('請輸入動作名稱');
+    const n = Math.max(1, num($('#exSets').value));
+    mutate(cursor, d => d.exercises.push({
+      id:uid(), name, kcal:num($('#exKcal').value),
+      sets: Array.from({length:n}, () => ({ reps:num($('#exReps').value) || 1, weight:num($('#exW').value), done:false })),
+    }));
+    closeSheet(); renderGym(); renderToday(); toast('已加入');
+  });
+});
+
+$('#routineList').addEventListener('click', e => {
+  const del = e.target.closest('[data-delroutine]');
+  if (del) {
+    if (!confirm('確定刪除這份菜單？')) return;
+    S.routines = S.routines.filter(r => r.id !== del.dataset.delroutine); save(); return renderGym();
+  }
+  const edit = e.target.closest('[data-editroutine]');
+  if (edit) editRoutine(S.routines.find(r => r.id === edit.dataset.editroutine));
+});
+$('#newRoutine').addEventListener('click', () => editRoutine(null));
+
+function editRoutine(routine) {
+  const r = routine || { id:uid(), name:'', exercises:[{name:'',sets:3,reps:10,weight:0}] };
+  const rows = list => list.map((x, i) => `
+    <div class="grid2" style="grid-template-columns:1fr auto;gap:6px;margin-bottom:6px">
+      <input class="rName" value="${esc(x.name)}" placeholder="動作">
+      <button class="del rDel" data-i="${i}" aria-label="刪除">✕</button>
+      <div class="grid3" style="grid-column:1/-1">
+        <input class="rSets" type="number" inputmode="numeric" value="${x.sets}" placeholder="組">
+        <input class="rReps" type="number" inputmode="numeric" value="${x.reps}" placeholder="次">
+        <input class="rW" type="number" inputmode="decimal" value="${x.weight}" placeholder="kg">
+      </div>
+    </div>`).join('');
+
+  openSheet(`
+    <h2>${routine ? '編輯菜單' : '新菜單'}</h2>
+    <div class="field"><label>菜單名稱</label><input id="rTitle" value="${esc(r.name)}" placeholder="例如：胸背日"></div>
+    <div id="rRows">${rows(r.exercises)}</div>
+    <button class="btn btn-block btn-sm" id="rAddRow" style="margin-bottom:10px">＋ 加一個動作</button>
+    <button class="btn btn-primary btn-block" id="rSave">儲存菜單</button>
+  `);
+
+  const collect = () => $$('#rRows > div').map(row => ({
+    name: $('.rName', row).value.trim(),
+    sets: Math.max(1, num($('.rSets', row).value)),
+    reps: Math.max(1, num($('.rReps', row).value)),
+    weight: num($('.rW', row).value),
+  }));
+
+  $('#rAddRow').addEventListener('click', () => {
+    const list = collect(); list.push({name:'',sets:3,reps:10,weight:0});
+    $('#rRows').innerHTML = rows(list);
+  });
+  $('#rRows').addEventListener('click', e => {
+    const del = e.target.closest('.rDel'); if (!del) return;
+    const list = collect(); list.splice(num(del.dataset.i), 1);
+    $('#rRows').innerHTML = rows(list.length ? list : [{name:'',sets:3,reps:10,weight:0}]);
+  });
+  $('#rSave').addEventListener('click', () => {
+    const name = $('#rTitle').value.trim();
+    if (!name) return toast('請輸入菜單名稱');
+    const exercises = collect().filter(x => x.name);
+    if (!exercises.length) return toast('至少要有一個動作');
+    const saved = { id:r.id, name, exercises };
+    const i = S.routines.findIndex(x => x.id === r.id);
+    if (i >= 0) S.routines[i] = saved; else S.routines.push(saved);
+    save(); closeSheet(); renderGym(); toast('菜單已儲存');
+  });
+}
+
+/* ========== 趨勢 ========== */
+$('#rangeChips').addEventListener('click', e => {
+  const c = e.target.closest('[data-range]'); if (!c) return;
+  trendRange = num(c.dataset.range);
+  $$('#rangeChips .chip').forEach(x => x.classList.toggle('on', x === c));
+  renderTrend();
+});
+
+function rangeKeys() {
+  const out = [];
+  for (let i = trendRange - 1; i >= 0; i--) out.push(shiftKey(todayKey(), -i));
+  return out;
+}
+
+function renderTrend() {
+  const keys = rangeKeys();
+  drawWeight(keys);
+  drawKcal(keys);
+
+  const logged = keys.filter(k => S.days[k] && (S.days[k].meals.length || S.days[k].water || S.days[k].weight));
+  const withMeals = keys.filter(k => S.days[k] && S.days[k].meals.length);
+  const avg = (arr, fn) => arr.length ? arr.reduce((a,k) => a + fn(S.days[k]), 0) / arr.length : 0;
+
+  $('#avgKcal').textContent  = withMeals.length ? Math.round(avg(withMeals, d => totals(d).kcal)) : '–';
+  $('#avgP').textContent     = withMeals.length ? Math.round(avg(withMeals, d => totals(d).p)) + 'g' : '–';
+  $('#avgWater').textContent = logged.length ? Math.round(avg(logged, d => d.water)) : '–';
+  $('#daysLogged').textContent = `${logged.length}/${keys.length}`;
+}
+
+function chartBox(svg) {
+  const w = svg.clientWidth || 320, h = 150;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  return { w, h, pad:{ t:14, r:8, b:20, l:34 } };
+}
+
+function drawWeight(keys) {
+  const svg = $('#weightChart');
+  const pts = keys.map(k => ({ k, v: S.days[k]?.weight })).filter(p => p.v);
+  if (pts.length < 1) {
+    svg.innerHTML = `<text x="50%" y="52%" text-anchor="middle" fill="var(--text-faint)" font-size="13">還沒有體重紀錄</text>`;
+    $('#wStat').textContent = ''; return;
+  }
+  const { w, h, pad } = chartBox(svg);
+  const vals = pts.map(p => p.v);
+  const target = S.goals.weightTarget;
+  let min = Math.min(...vals, target || Infinity), max = Math.max(...vals, target || -Infinity);
+  if (max - min < 2) { const mid = (max+min)/2; min = mid - 1; max = mid + 1; }
+  const px = i => pad.l + (pts.length === 1 ? (w - pad.l - pad.r)/2 : i * (w - pad.l - pad.r) / (pts.length - 1));
+  const py = v => pad.t + (1 - (v - min) / (max - min)) * (h - pad.t - pad.b);
+
+  const line = pts.map((p,i) => `${i ? 'L' : 'M'}${px(i).toFixed(1)},${py(p.v).toFixed(1)}`).join('');
+  const area = `${line}L${px(pts.length-1).toFixed(1)},${h-pad.b}L${px(0).toFixed(1)},${h-pad.b}Z`;
+
+  svg.innerHTML = `
+    <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--green-500)" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="var(--green-500)" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${[max, (max+min)/2, min].map(v => `
+      <line x1="${pad.l}" y1="${py(v)}" x2="${w-pad.r}" y2="${py(v)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${pad.l-6}" y="${py(v)+4}" text-anchor="end" fill="var(--text-faint)" font-size="10">${v.toFixed(1)}</text>`).join('')}
+    ${target ? `<line x1="${pad.l}" y1="${py(target)}" x2="${w-pad.r}" y2="${py(target)}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 4"/>` : ''}
+    ${pts.length > 1 ? `<path d="${area}" fill="url(#wg)"/>` : ''}
+    <path d="${line}" fill="none" stroke="var(--green-500)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p,i) => `<circle cx="${px(i)}" cy="${py(p.v)}" r="3.5" fill="var(--card)" stroke="var(--green-500)" stroke-width="2.5"/>`).join('')}
+    <text x="${px(0)}" y="${h-6}" fill="var(--text-faint)" font-size="10">${pts[0].k.slice(5)}</text>
+    ${pts.length > 1 ? `<text x="${w-pad.r}" y="${h-6}" text-anchor="end" fill="var(--text-faint)" font-size="10">${pts[pts.length-1].k.slice(5)}</text>` : ''}
+  `;
+  const diff = pts.length > 1 ? pts[pts.length-1].v - pts[0].v : 0;
+  $('#wStat').textContent = pts.length > 1
+    ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg · 現在 ${pts[pts.length-1].v} kg`
+    : `現在 ${pts[0].v} kg`;
+}
+
+function drawKcal(keys) {
+  const svg = $('#kcalChart');
+  const data = keys.map(k => ({ k, v: S.days[k] ? totals(S.days[k]).kcal : 0 }));
+  if (!data.some(d => d.v)) {
+    svg.innerHTML = `<text x="50%" y="52%" text-anchor="middle" fill="var(--text-faint)" font-size="13">還沒有飲食紀錄</text>`;
+    $('#kStat').textContent = ''; return;
+  }
+  const { w, h, pad } = chartBox(svg);
+  const goal = S.goals.kcal;
+  const max = Math.max(goal * 1.15, ...data.map(d => d.v)) || 1;
+  const bw = (w - pad.l - pad.r) / data.length;
+  const py = v => pad.t + (1 - v / max) * (h - pad.t - pad.b);
+
+  svg.innerHTML = `
+    ${[max, max/2].map(v => `
+      <line x1="${pad.l}" y1="${py(v)}" x2="${w-pad.r}" y2="${py(v)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${pad.l-6}" y="${py(v)+4}" text-anchor="end" fill="var(--text-faint)" font-size="10">${Math.round(v)}</text>`).join('')}
+    ${data.map((d,i) => {
+      if (!d.v) return '';
+      const x = pad.l + i*bw + bw*0.18, bwid = bw*0.64;
+      const y = py(d.v), hh = Math.max(2, (h - pad.b) - y);
+      const col = d.v > goal ? 'var(--danger)' : 'var(--green-500)';
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bwid.toFixed(1)}" height="${hh.toFixed(1)}" rx="3" fill="${col}" opacity=".9"/>`;
+    }).join('')}
+    <line x1="${pad.l}" y1="${py(goal)}" x2="${w-pad.r}" y2="${py(goal)}" stroke="var(--text-faint)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="${pad.l}" y="${h-6}" fill="var(--text-faint)" font-size="10">${data[0].k.slice(5)}</text>
+    <text x="${w-pad.r}" y="${h-6}" text-anchor="end" fill="var(--text-faint)" font-size="10">${data[data.length-1].k.slice(5)}</text>
+  `;
+  const days = data.filter(d => d.v);
+  const over = days.filter(d => d.v > goal).length;
+  $('#kStat').textContent = `${days.length} 天有紀錄 · ${over} 天超標`;
+}
+
+/* ========== 設定 ========== */
+function renderMore() {
+  const g = S.goals, p = S.profile;
+  $('#gKcal').value = g.kcal; $('#gP').value = g.protein; $('#gC').value = g.carbs;
+  $('#gF').value = g.fat; $('#gWater').value = g.water; $('#gWeight').value = g.weightTarget ?? '';
+  $('#pSex').value = p.sex; $('#pAge').value = p.age; $('#pHeight').value = p.height; $('#pAct').value = p.activity;
+
+  const w = latestWeight();
+  $('#tdeeHint').textContent = w
+    ? `以最新體重 ${w} kg 估算，每日消耗約 ${tdee(w)} kcal（Mifflin-St Jeor 公式）。`
+    : '先在「今日」記錄一次體重，就能估算每日消耗。';
+
+  $('#customCount').textContent = S.customFoods.length ? `${S.customFoods.length} 項` : '';
+  $('#customFoods').innerHTML = S.customFoods.length ? S.customFoods.map((f,i) => `
+    <div class="item">
+      <div class="name"><b>${esc(f.name)}</b><small>P${f.p} · C${f.c} · F${f.f}</small></div>
+      <div class="num">${f.kcal}</div>
+      <button class="del" data-delfood="${i}" aria-label="刪除">✕</button>
+    </div>`).join('') : `<div class="empty">加入食物時勾選「存成我的常用食物」就會出現在這裡</div>`;
+}
+
+function latestWeight() {
+  const keys = Object.keys(S.days).filter(k => S.days[k].weight).sort();
+  return keys.length ? S.days[keys[keys.length-1]].weight : null;
+}
+function tdee(weight) {
+  const p = S.profile;
+  const bmr = 10*weight + 6.25*p.height - 5*p.age + (p.sex === 'male' ? 5 : -161);
+  return Math.round(bmr * p.activity);
+}
+
+['gKcal','gP','gC','gF','gWater','gWeight'].forEach(id => $('#'+id).addEventListener('change', () => {
+  const g = S.goals;
+  g.kcal = Math.max(0, num($('#gKcal').value)) || 2000;
+  g.water = Math.max(0, num($('#gWater').value)) || 2000;
+  g.weightTarget = num($('#gWeight').value) || null;
+  const P = num($('#gP').value), C = num($('#gC').value), F = num($('#gF').value);
+  g.protein = P || Math.round(g.kcal * 0.30 / 4);
+  g.carbs   = C || Math.round(g.kcal * 0.40 / 4);
+  g.fat     = F || Math.round(g.kcal * 0.30 / 9);
+  save(); renderMore(); renderToday(); toast('目標已更新');
+}));
+
+['pSex','pAge','pHeight','pAct'].forEach(id => $('#'+id).addEventListener('change', () => {
+  S.profile = { sex:$('#pSex').value, age:num($('#pAge').value) || 28,
+                height:num($('#pHeight').value) || 170, activity:num($('#pAct').value) || 1.375 };
+  save(); renderMore();
+}));
+
+$('#calcTdee').addEventListener('click', () => {
+  const w = latestWeight();
+  if (!w) return toast('請先在「今日」記錄體重');
+  const t = tdee(w);
+  openSheet(`
+    <h2>每日熱量建議</h2>
+    <p style="font-size:13.5px;color:var(--text-soft);margin-bottom:14px">
+      以體重 ${w} kg 估算，你每天大約消耗 <b style="color:var(--text)">${t} kcal</b>。選一個目標：
+    </p>
+    <div style="display:grid;gap:8px">
+      <button class="btn btn-block" data-goal="${Math.round(t-500)}">減脂 · ${Math.round(t-500)} kcal<span style="color:var(--text-faint);font-weight:500"> ／週減約 0.5 kg</span></button>
+      <button class="btn btn-block" data-goal="${Math.round(t-250)}">緩慢減脂 · ${Math.round(t-250)} kcal</button>
+      <button class="btn btn-block" data-goal="${t}">維持體重 · ${t} kcal</button>
+      <button class="btn btn-block" data-goal="${Math.round(t+300)}">增肌 · ${Math.round(t+300)} kcal</button>
+    </div>
+    <p class="hint" style="margin-top:12px">這是公式估算，實際狀況因人而異。若有慢性病、懷孕或正在治療中，請先諮詢醫師或營養師。</p>
+  `);
+  $$('[data-goal]').forEach(b => b.addEventListener('click', () => {
+    const kcal = num(b.dataset.goal);
+    S.goals.kcal = kcal;
+    S.goals.protein = Math.round(kcal * 0.30 / 4);
+    S.goals.carbs   = Math.round(kcal * 0.40 / 4);
+    S.goals.fat     = Math.round(kcal * 0.30 / 9);
+    save(); closeSheet(); renderMore(); renderToday(); toast(`目標設為 ${kcal} kcal`);
+  }));
+});
+
+$('#customFoods').addEventListener('click', e => {
+  const d = e.target.closest('[data-delfood]'); if (!d) return;
+  S.customFoods.splice(num(d.dataset.delfood), 1); save(); renderMore();
+});
+
+$('#addCustomFood').addEventListener('click', () => {
+  openSheet(`
+    <h2>新增自訂食物</h2>
+    <div class="field"><label>名稱</label><input id="cfName" placeholder="例如：媽媽的滷雞腿"></div>
+    <div class="field"><label>熱量 kcal</label><input id="cfKcal" type="number" inputmode="numeric"></div>
+    <div class="grid3">
+      <div class="field"><label>蛋白 g</label><input id="cfP" type="number" inputmode="decimal"></div>
+      <div class="field"><label>碳水 g</label><input id="cfC" type="number" inputmode="decimal"></div>
+      <div class="field"><label>脂肪 g</label><input id="cfF" type="number" inputmode="decimal"></div>
+    </div>
+    <button class="btn btn-primary btn-block" id="cfSave">儲存</button>
+  `);
+  $('#cfSave').addEventListener('click', () => {
+    const name = $('#cfName').value.trim();
+    if (!name) return toast('請輸入名稱');
+    S.customFoods.unshift({ name, kcal:num($('#cfKcal').value), p:num($('#cfP').value),
+                            c:num($('#cfC').value), f:num($('#cfF').value), cat:'自訂' });
+    save(); closeSheet(); renderMore(); toast('已儲存');
+  });
+});
+
+/* ---- 匯出 / 匯入 / 清除 ---- */
+$('#exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `dietzen-${todayKey()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('已匯出備份');
+});
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || typeof data !== 'object' || !data.days) throw new Error('格式不符');
+      if (!confirm('匯入會覆蓋目前的所有紀錄，確定嗎？')) return;
+      S = Object.assign(DEFAULTS(), data);
+      save(); renderAll(); toast('匯入完成');
+    } catch (err) { toast('檔案讀不到，請確認是 DietZen 匯出的 JSON'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+$('#resetBtn').addEventListener('click', () => {
+  if (!confirm('這會刪除所有飲食、體重與菜單紀錄，而且無法復原。確定嗎？')) return;
+  if (!confirm('真的要清除嗎？建議先匯出備份。')) return;
+  localStorage.removeItem(KEY); S = DEFAULTS(); cursor = todayKey(); renderAll(); toast('已清除');
+});
+
+/* ========== Sheet ========== */
+function openSheet(html) {
+  $('#sheetBody').innerHTML = html;
+  $('#sheet').classList.add('open'); $('#scrim').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() {
+  $('#sheet').classList.remove('open'); $('#scrim').classList.remove('open');
+  document.body.style.overflow = '';
+}
+$('#scrim').addEventListener('click', closeSheet);
+
+/* ========== 安裝提示 ========== */
+let deferredPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  $('#installBanner').style.display = 'flex';
+  $('#installBtn').style.display = 'inline-flex';
+  $('#installHint').textContent = '安裝後可離線使用，開啟速度也更快。';
+});
+$('#installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $('#installBanner').style.display = 'none';
+});
+if (isIOS && !isStandalone) {
+  $('#installBanner').style.display = 'flex';
+  $('#installHint').textContent = '在 Safari 點下方的「分享」→「加入主畫面」，就會像 App 一樣出現在桌面。';
+}
+
+/* ========== Service worker ========== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW 註冊失敗', err));
+  });
+}
+
+/* ========== 啟動 ========== */
+function renderAll() { renderDate(); renderToday(); renderFood(); renderGym(); renderTrend(); renderMore(); }
+renderAll();
+
+// 桌面圖示長按的捷徑（manifest shortcuts）用 ?tab= 指定要開哪一頁
+const wanted = new URLSearchParams(location.search).get('tab');
+if (wanted) {
+  const btn = $(`nav button[data-view="${CSS.escape(wanted)}"]`);
+  if (btn) btn.click();
+}
+window.addEventListener('resize', () => renderTrend());
+
+// 應用程式擺著過夜時，回到前景要跳到新的一天
+let lastKnownToday = todayKey();
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  const t = todayKey();
+  if (t === lastKnownToday) return;
+  if (cursor === lastKnownToday) cursor = t;   // 停在「今天」的話就跟著換日
+  lastKnownToday = t;
+  renderAll();
+});
+</script>
+</body>
+</html>
