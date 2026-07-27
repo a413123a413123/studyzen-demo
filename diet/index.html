@@ -329,6 +329,11 @@ nav button.on { color:var(--green-700); }
   <!-- ============ 運動 ============ -->
   <section class="view" id="view-gym">
     <div class="card">
+      <div class="card-title"><h2>📍 今天在哪練</h2><span class="sub" id="placeNow">尚未選擇</span></div>
+      <div class="chips" id="placeChips"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title"><h2>🏋️ 今日訓練</h2><span class="sub" id="gymSummary">尚未安排</span></div>
       <div class="chips" id="routineChips"></div>
       <div class="add-row" style="margin-top:10px">
@@ -359,6 +364,16 @@ nav button.on { color:var(--green-700); }
       <svg class="chart" id="kcalChart" preserveAspectRatio="none"></svg>
       <div class="legend"><span><i style="background:var(--green-500)"></i>達標</span><span><i style="background:var(--danger)"></i>超標</span><span><i style="background:var(--text-faint)"></i>目標線</span></div>
     </div>
+    <div class="card">
+      <div class="card-title"><h2>🏋️ 訓練紀錄</h2><span class="sub" id="gymStat"></span></div>
+      <div class="kv-row" style="margin-bottom:12px">
+        <div class="kv"><div class="n" id="gymDays">–</div><div class="l">訓練天數</div></div>
+        <div class="kv"><div class="n" id="gymVolume">–</div><div class="l">總訓練量</div></div>
+        <div class="kv"><div class="n" id="gymBurn">–</div><div class="l">總消耗</div></div>
+      </div>
+      <div id="placeStats"></div>
+    </div>
+
     <div class="card">
       <div class="card-title"><h2>📊 期間平均</h2></div>
       <div class="kv-row" style="margin-bottom:10px">
@@ -535,6 +550,7 @@ const DEFAULTS = () => ({
   goals:   { kcal:2000, protein:120, carbs:200, fat:67, water:2000, weightTarget:null },
   days: {}, customFoods: [], recent: [],
   routines: JSON.parse(JSON.stringify(PRESET_ROUTINES)),
+  places: ['健身房', '家裡', '公園', '公司'],
 });
 
 let S = load();
@@ -571,7 +587,7 @@ function todayKey() { return dateKey(new Date()); }
 function parseKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
 function shiftKey(k, delta) { const d = parseKey(k); d.setDate(d.getDate()+delta); return dateKey(d); }
 
-function emptyDay() { return { meals:[], water:0, weight:null, exercises:[], note:'' }; }
+function emptyDay() { return { meals:[], water:0, weight:null, exercises:[], note:'', place:'' }; }
 function day(k = cursor) { return S.days[k] || emptyDay(); }
 function mutate(k, fn) { S.days[k] = S.days[k] || emptyDay(); fn(S.days[k]); save(); }
 
@@ -780,6 +796,7 @@ function addMeal(slot, name, kcal, p, c, f) {
 /* ========== 運動 ========== */
 function renderGym() {
   const d = day();
+  renderPlaces(d);
   $('#routineChips').innerHTML = S.routines.map(r =>
     `<button class="chip" data-routine="${r.id}">${esc(r.name)}</button>`).join('');
 
@@ -812,6 +829,59 @@ function renderGym() {
 }
 
 const volume = ex => ex.sets.filter(s => s.done).reduce((a,s) => a + s.reps * s.weight, 0);
+
+/* ---- 訓練地點 ---- */
+function renderPlaces(d) {
+  $('#placeChips').innerHTML =
+    S.places.map(p => `<button class="chip${d.place === p ? ' on' : ''}" data-place="${esc(p)}">${esc(p)}</button>`).join('')
+    + `<button class="chip" data-manage-places="1">＋ 地點</button>`;
+  $('#placeNow').textContent = d.place || '尚未選擇';
+}
+
+$('#placeChips').addEventListener('click', e => {
+  const chip = e.target.closest('[data-place]');
+  if (chip) {
+    const p = chip.dataset.place;
+    mutate(cursor, d => { d.place = d.place === p ? '' : p; });   // 再點一次可取消
+    return renderGym();
+  }
+  if (e.target.closest('[data-manage-places]')) managePlaces();
+});
+
+function managePlaces() {
+  const draw = () => `
+    <h2>訓練地點</h2>
+    <div class="add-row" style="margin-bottom:12px">
+      <input id="plNew" placeholder="例如：World Gym 民權店" autocomplete="off">
+      <button class="btn btn-primary" id="plAdd">新增</button>
+    </div>
+    ${S.places.length ? S.places.map((p,i) => `
+      <div class="item">
+        <div class="name"><b>${esc(p)}</b><small>${placeCount(p)} 次</small></div>
+        <button class="del" data-delplace="${i}" aria-label="刪除">✕</button>
+      </div>`).join('') : `<div class="empty">還沒有地點，先新增一個</div>`}
+    <p class="hint" style="margin-top:8px">刪除地點不會影響已經記錄過的日子。</p>`;
+
+  openSheet(draw());
+  const rebind = () => {
+    $('#plAdd').addEventListener('click', () => {
+      const name = $('#plNew').value.trim();
+      if (!name) return toast('請輸入地點名稱');
+      if (S.places.includes(name)) return toast('這個地點已經在清單裡了');
+      S.places.push(name); save();
+      $('#sheetBody').innerHTML = draw(); rebind();
+      renderGym(); toast('已新增');
+    });
+    $('#sheetBody').querySelectorAll('[data-delplace]').forEach(b => b.addEventListener('click', () => {
+      S.places.splice(num(b.dataset.delplace), 1); save();
+      $('#sheetBody').innerHTML = draw(); rebind();
+      renderGym();
+    }));
+  };
+  rebind();
+}
+
+const placeCount = p => Object.values(S.days).filter(d => d.place === p).length;
 
 $('#routineChips').addEventListener('click', e => {
   const btn = e.target.closest('[data-routine]');
@@ -987,10 +1057,36 @@ function renderTrend() {
   const withMeals = keys.filter(k => S.days[k] && S.days[k].meals.length);
   const avg = (arr, fn) => arr.length ? arr.reduce((a,k) => a + fn(S.days[k]), 0) / arr.length : 0;
 
+  renderGymStats(keys);
+
   $('#avgKcal').textContent  = withMeals.length ? Math.round(avg(withMeals, d => totals(d).kcal)) : '–';
   $('#avgP').textContent     = withMeals.length ? Math.round(avg(withMeals, d => totals(d).p)) + 'g' : '–';
   $('#avgWater').textContent = logged.length ? Math.round(avg(logged, d => d.water)) : '–';
   $('#daysLogged').textContent = `${logged.length}/${keys.length}`;
+}
+
+function renderGymStats(keys) {
+  // 選了地點就算有去，即使當天沒有逐項記動作（例如上團課）
+  const trained = keys.filter(k => S.days[k] && (S.days[k].exercises.length || S.days[k].place));
+  const vol  = trained.reduce((a,k) => a + S.days[k].exercises.reduce((b,e) => b + volume(e), 0), 0);
+  const burn = trained.reduce((a,k) => a + totals(S.days[k]).burn, 0);
+
+  $('#gymDays').textContent   = trained.length ? `${trained.length}/${keys.length}` : '–';
+  $('#gymVolume').textContent = vol
+    ? (vol >= 10000 ? (vol/1000).toFixed(1) + ' 噸' : Math.round(vol).toLocaleString() + ' kg')
+    : '–';
+  $('#gymBurn').textContent   = burn ? Math.round(burn) : '–';
+
+  const counts = {};
+  trained.forEach(k => { const p = S.days[k].place || '未指定地點'; counts[p] = (counts[p] || 0) + 1; });
+  const ranked = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+
+  $('#gymStat').textContent = ranked.length ? `最常去 ${ranked[0][0]}` : '';
+  $('#placeStats').innerHTML = ranked.length ? ranked.map(([p, n]) => `
+    <div class="macro" style="margin-bottom:9px">
+      <div class="macro-top"><b>${esc(p)}</b><span>${n} 次</span></div>
+      <div class="bar"><i style="width:${(n/ranked[0][1]*100).toFixed(0)}%;background:var(--green-500)"></i></div>
+    </div>`).join('') : `<div class="empty">這段期間還沒有訓練紀錄</div>`;
 }
 
 function chartBox(svg) {
