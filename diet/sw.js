@@ -1,5 +1,5 @@
 /* DietZen service worker — 離線優先，改版時自動更新快取 */
-const VERSION = 'dietzen-v1';
+const VERSION = 'dietzen-v2';
 const ASSETS = [
   './',
   './index.html',
