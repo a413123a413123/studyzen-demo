@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.studyzen.dietzen'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.studyzen.dietzen"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    // App 內容就是 /diet 那份 PWA，直接當成 assets 打包，不另外複製一份到這裡
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../diet']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.12.1'
+
+    // 傳遞依賴同時拉進 kotlin-stdlib 1.8.22 和 kotlin-stdlib-jdk8 1.6.21。
+    // Kotlin 1.8 起 jdk7/jdk8 的內容已併回主 stdlib，兩者並存會出現重複類別而編譯失敗；
+    // 用 BOM 把所有 kotlin-stdlib* 對齊到同一版就沒有重複。
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.24')
+}
