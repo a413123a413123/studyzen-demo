@@ -12,7 +12,7 @@ on:
       - '.github/workflows/build-diet-apk.yml'
 
 permissions:
-  contents: read
+  contents: write   # 發佈 Release 需要，手機才能用一個乾淨的網址直接下載 APK
 
 jobs:
   apk:
@@ -49,10 +49,27 @@ jobs:
           echo "apk=android/$OUT" >> "$GITHUB_OUTPUT"
           ls -lh "$OUT"
 
-      - name: Upload APK
+      - name: Upload APK as build artifact
         uses: actions/upload-artifact@v4
         with:
           name: DietZen-apk
           path: ${{ steps.rename.outputs.apk }}
           if-no-files-found: error
           retention-days: 90
+
+      # Artifact 是 zip 包又要登入才能下載，手機上很難用。
+      # 同一支 APK 再放到一個固定的 Release tag，手機瀏覽器點連結就能直接安裝。
+      - name: Publish to the diet-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete diet-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create diet-latest "${{ steps.rename.outputs.apk }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "DietZen APK（最新版）" \
+            --notes "由 commit \`${GITHUB_SHA:0:7}\` 自動建置。
+
+用手機瀏覽器直接點下面的 .apk 就能安裝，過程中 Android 會問要不要允許安裝未知來源的應用程式，允許即可。
+
+**這是 debug 簽章的版本**：每次重新建置的簽章金鑰都不同，所以更新版本前要先把舊的 DietZen 卸載，否則 Android 會拒絕覆蓋安裝。飲食紀錄存在 App 內部，卸載會一起清掉 — 先用設定頁的「匯出 JSON」備份。"

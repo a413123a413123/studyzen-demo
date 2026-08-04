@@ -36,4 +36,9 @@ android {
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.webkit:webkit:1.12.1'
+
+    // 傳遞依賴同時拉進 kotlin-stdlib 1.8.22 和 kotlin-stdlib-jdk8 1.6.21。
+    // Kotlin 1.8 起 jdk7/jdk8 的內容已併回主 stdlib，兩者並存會出現重複類別而編譯失敗；
+    // 用 BOM 把所有 kotlin-stdlib* 對齊到同一版就沒有重複。
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.24')
 }
