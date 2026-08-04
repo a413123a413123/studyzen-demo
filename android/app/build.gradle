@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.studyzen.dietzen'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.studyzen.dietzen"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    // App 內容就是 /diet 那份 PWA，直接當成 assets 打包，不另外複製一份到這裡
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../diet']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
