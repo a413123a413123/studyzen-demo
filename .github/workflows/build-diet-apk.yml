@@ -58,18 +58,24 @@ jobs:
           retention-days: 90
 
       # Artifact 是 zip 包又要登入才能下載，手機上很難用。
-      # 同一支 APK 再放到一個固定的 Release tag，手機瀏覽器點連結就能直接安裝。
+      # 同一支 APK 再放到固定的 diet-latest tag，手機瀏覽器點連結就能直接安裝。
+      # 注意：以下每一行都必須維持相同縮排，頂到第 0 欄會讓 YAML 的 block scalar 提早結束。
       - name: Publish to the diet-latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat > /tmp/notes.md <<'NOTES'
+          由 GitHub Actions 自動建置的 Android 安裝檔。
+
+          用手機瀏覽器直接點下面的 `.apk` 就能安裝。過程中 Android 會問要不要允許安裝未知來源的應用程式，允許即可。
+
+          **這是 debug 簽章的版本。** 每次重新建置的簽章金鑰都不一樣，所以更新前要先卸載舊的 DietZen，否則系統會拒絕覆蓋安裝。飲食紀錄存在 App 內部，卸載會一起清掉，先用設定頁的「匯出 JSON」備份。
+
+          App 沒有宣告網路權限，所有資料都留在手機上。
+          NOTES
           gh release delete diet-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
           gh release create diet-latest "${{ steps.rename.outputs.apk }}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "DietZen APK（最新版）" \
-            --notes "由 commit \`${GITHUB_SHA:0:7}\` 自動建置。
-
-用手機瀏覽器直接點下面的 .apk 就能安裝，過程中 Android 會問要不要允許安裝未知來源的應用程式，允許即可。
-
-**這是 debug 簽章的版本**：每次重新建置的簽章金鑰都不同，所以更新版本前要先把舊的 DietZen 卸載，否則 Android 會拒絕覆蓋安裝。飲食紀錄存在 App 內部，卸載會一起清掉 — 先用設定頁的「匯出 JSON」備份。"
+            --notes-file /tmp/notes.md
